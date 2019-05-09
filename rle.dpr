@@ -47,7 +47,7 @@ begin
       BlockRead(myFile, byteArray, 1024, readByte);
       index := 0;
      end
-     else
+     else readByte:=-1;
 
   end;
   if readByte<>-1 then
@@ -70,7 +70,7 @@ begin
       BlockRead(outFile, byteArray, 1024, readByte);
       index := 0;
      end
-     else readbyte:=-1 
+     else readbyte:=-1
   end;
   if readByte<>-1 then
   begin
@@ -87,14 +87,15 @@ var i:integer;
   begin
      //formirate work byte
      //write bytes  from array
-     onebyte:= symbolCount-1;
-     if byteTypeRepeat then  onebyte:= onebyte+128-1;
-     if symbolCount<>0 then
-    BlockWrite(outfile, onebyte,1); //write byte
-    if byteTypeRepeat then   BlockWrite(outfile,blockSymbols[1],1)
-    else
-     for i:=1 to blockSymbolsCounter do
-    BlockWrite(outfile,blockSymbols[i],1);
+     if (symbolCount <> 0) AND (blockSymbolsCounter <> 0)then
+     begin
+      onebyte:= symbolCount;
+      if byteTypeRepeat then  onebyte:= onebyte+128;
+      BlockWrite(outfile, onebyte,1); //write byte
+      if byteTypeRepeat then  BlockWrite(outfile,blockSymbols[1],1)
+      else
+        BlockWrite(outfile,blockSymbols,blockSymbolsCounter);
+    end;
 
   end;
 
@@ -123,6 +124,7 @@ symbolRepeatCount: Integer;
 
     while readByte<>-1 do
     begin
+      try
       Inc(symbolCount);
       Inc(blockSymbolsCounter);
       blockSymbols[blockSymbolsCounter]:=curr;
@@ -143,7 +145,6 @@ symbolRepeatCount: Integer;
         end
       else
        begin
-
            if byteTypeRepeat then
            begin
             blockSymbolsCounter:=blockSymbolsCounter-1;
@@ -153,15 +154,25 @@ symbolRepeatCount: Integer;
             blockSymbolsCounter:=1;
             blockSymbols[blockSymbolsCounter]:=curr;
             byteTypeRepeat:=False;
-            //symbolRepeatCount:=1;
            end;
          symbolRepeatCount:=1;
         end;
 
+      if (byteTypeRepeat=False) AND (blockSymbolsCounter > 126) then
+      begin
+         writeBlock(symbolCount, byteTypeRepeat, blockSymbols, blockSymbolsCounter);
+         symbolCount:=0;
+         blockSymbolsCounter:=0;
+      end;
+
       prev:=curr;
       curr:=GetNextByte1;
+      except
+           writeln('error');
+      end;
 
     end;
+    writeBlock(symbolCount, byteTypeRepeat, blockSymbols, blockSymbolsCounter);
 
   end;
 
@@ -212,32 +223,24 @@ var  count0,count1,i:Integer;
 
      end;
 
-
-
-
-
-
-
   procedure decompress2;
 var j,count:Integer;
-     s:string;
+     s:byte;
      curr:byte;
  begin
    curr:=GetNextByte2;
    while readByte<>-1 do
     begin
       count:=curr and 127;
-     s:= ByteToBin(curr);
-       if s[1]='1' then
+      s:= curr shr 7;
+       if s=1 then
         begin
-          count:=count+2;
           curr:=GetNextByte2;
           for j:=1 to count do
           BlockWrite(myFile,curr,1);
         end
        else
         begin
-          count:=count+1;
           for j:=1 to count do
            begin
              curr:=GetNextByte2;
@@ -254,7 +257,7 @@ begin
    case Key of
    1: begin
 
-    s:='C:\work\3.JPG';
+    s:='C:\work\1.jpg';
   AssignFile(myFile, s);
   Reset(myFile, 1);
 
@@ -267,13 +270,13 @@ begin
     CloseFile(outFile);
     Readln;
   end;
-  
+
   2:
   begin
-    s:='C:\work\3.JPG.KSU';
+    s:='C:\work\1.jpg.KSU';
    AssignFile(outFile,s);
      Reset(outFile, 1);
-     s:=Copy(s,1,Pos('.KSU',S)-1);
+     s:='C:\work\result.JPG';//Copy(s,1,Pos('.KSU',S)-1);
     AssignFile(myFile,S );
     ReWrite(myFile, 1);
       index:=1024;
@@ -281,7 +284,7 @@ begin
      // BlockRead(outFile, byteArray, 1024, readByte);
       decompress2;
       //BlockWrite(outFile, byteArray, readByte, writeByte);
-   
+
     CloseFile(myFile);
     CloseFile(outFile);
     Readln;
