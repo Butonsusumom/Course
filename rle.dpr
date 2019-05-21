@@ -5,18 +5,26 @@ program rle;
 uses
   Windows,
   SysUtils,
+  System,
   Forms;
 
 type
    TMAS = array[1..1024] of byte;
+   A = file of Byte;
+
+  Signature = record
+    name:string[6];
+    crc:byte;
+    end;
 
 var
   s : string;
-  myFile : file;
+  myFile ,f: file;
   outfile: file;
   byteArray,singelements : TMAS;
   onebyte:Byte;
   readByte,key,index : Integer;
+  Sign:Signature;
 
 
 
@@ -177,57 +185,12 @@ symbolRepeatCount: Integer;
   end;
 
 
-  procedure compress3;
-var  count0,count1,i:Integer;
- begin
-   count1:=1;    // inticialize counters for different posledovatelnostey
-   count0:=0;
-   for i:=1 to readbyte do
-    begin
-      if byteArray[i]=byteArray[i+1] then
-      begin
-          inc(count1);
-          if (Count0<>0) and (count1>2) then
-          begin
-           onebyte:=0+count0-2 ;                // make a byte , use +2 becouse we count 1 extra symbol
-           BlockWrite(outfile,onebyte,1); //write byte
-           BlockWrite(outfile,singelements,count0-1);
-           count0:=0;                 // write array
-          end;
-
-          end
-      else
-       begin
-         if count1=2 then               //add to array twice used elements
-         begin
-           count0:=count0+count1-1;
-         singelements[count0-1]:=byteArray[i];
-
-         count1:=1;
-         end;
-          if (count1>2)  then
-           begin
-             onebyte:=128+count1-2;// make a byte
-             BlockWrite(outfile,onebyte,1);//write byte
-             BlockWrite(outfile,byteArray[i],1); //write symbol
-            count1:=1;
-           end;
-          if i=1 then Inc(count0);
-         if count0>0 then
-          singelements[count0]:=bytearray[i]; //formirate asn array
-           Inc(count0);
-       end;
-
-
-    end;
-
-     end;
-
-  procedure decompress2;
+  procedure decompress;
 var j,count:Integer;
      s:byte;
      curr:byte;
  begin
+
    curr:=GetNextByte2;
    while readByte<>-1 do
     begin
@@ -251,20 +214,43 @@ var j,count:Integer;
     end;
  end;
 
+ procedure WriteSign;
+var
+ C:Byte;
+
+
+begin
+ s:='C:\work\1.jpg';
+  index:=1024;
+  readByte:=1024;
+Sign.name:=ExtractFileExt(s);
+ AssignFile(myFile, s);
+ Reset(myFile, 1);
+ C:=GetNextByte1;
+ while readbyte<>-1 do
+   C:= C xor GetNextByte1;
+Sign.crc:=C;
+CloseFile(myFile);
+end;
+
+
 begin
 
    Readln (key);
    case Key of
    1: begin
-
+   WriteSign;
     s:='C:\work\1.jpg';
-  AssignFile(myFile, s);
-  Reset(myFile, 1);
+    AssignFile(myFile, s);
+    Reset(myFile, 1);
+
 
   AssignFile(outFile,s+'.KSU');
   ReWrite(outFile, 1);
   index:=1024;
   readByte:=1024;
+    BlockWrite(outFile,Sign.name,6);
+    BlockWrite(outFile,Sign.crc,1);
       compress;
     CloseFile(myFile);
     CloseFile(outFile);
@@ -279,10 +265,12 @@ begin
      s:='C:\work\result.JPG';//Copy(s,1,Pos('.KSU',S)-1);
     AssignFile(myFile,S );
     ReWrite(myFile, 1);
+    BlockRead(outFile,Sign.name,6);
+    BlockRead(outFile,Sign.crc,1);
       index:=1024;
   readByte:=1024;
      // BlockRead(outFile, byteArray, 1024, readByte);
-      decompress2;
+      decompress;
       //BlockWrite(outFile, byteArray, readByte, writeByte);
 
     CloseFile(myFile);
@@ -290,7 +278,7 @@ begin
     Readln;
   end;
   3: begin
-    s:='C:\work\3.JPG';
+    s:='C:\work\1.JPG';
     AssignFile(myFile, s);
     Reset(myFile, 1);
      s:='C:\work\RED2.JPG';
@@ -306,4 +294,4 @@ begin
   end;
 
   end;
-end.
+  end.
